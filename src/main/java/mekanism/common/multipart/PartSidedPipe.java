@@ -68,6 +68,8 @@ public abstract class PartSidedPipe extends TMultiPart implements TSlottedPart, 
 	public boolean redstonePowered = false;
 
 	public boolean redstoneReactive = true;
+	
+	public boolean forceUpdate = false;
 
 	public ConnectionType[] connectionTypes = {ConnectionType.NORMAL, ConnectionType.NORMAL, ConnectionType.NORMAL, ConnectionType.NORMAL, ConnectionType.NORMAL, ConnectionType.NORMAL};
 	public TileEntity[] cachedAcceptors = new TileEntity[6];
@@ -131,8 +133,14 @@ public abstract class PartSidedPipe extends TMultiPart implements TSlottedPart, 
 				return new PartRestrictiveTransporter();
 			case DIVERSION_TRANSPORTER:
 				return new PartDiversionTransporter();
-			case HEAT_TRANSMITTER:
-				return new PartHeatTransmitter();
+			case THERMODYNAMIC_CONDUCTOR_BASIC:
+				return new PartThermodynamicConductor(Tier.ConductorTier.BASIC);
+			case THERMODYNAMIC_CONDUCTOR_ADVANCED:
+				return new PartThermodynamicConductor(Tier.ConductorTier.ADVANCED);
+			case THERMODYNAMIC_CONDUCTOR_ELITE:
+				return new PartThermodynamicConductor(Tier.ConductorTier.ELITE);
+			case THERMODYNAMIC_CONDUCTOR_ULTIMATE:
+				return new PartThermodynamicConductor(Tier.ConductorTier.ULTIMATE);
 			default:
 				return null;
 		}
@@ -171,10 +179,19 @@ public abstract class PartSidedPipe extends TMultiPart implements TSlottedPart, 
 			}
 		}
 
-		if(sendDesc && !world().isRemote)
+		if(!world().isRemote)
 		{
-			sendDescUpdate();
-			sendDesc = false;
+			if(forceUpdate)
+			{
+				refreshConnections();
+				forceUpdate = false;
+			}
+			
+			if(sendDesc)
+			{
+				sendDescUpdate();
+				sendDesc = false;
+			}
 		}
 	}
 	
@@ -270,6 +287,7 @@ public abstract class PartSidedPipe extends TMultiPart implements TSlottedPart, 
 					cachedAcceptors[side.ordinal()] = tileEntity;
 					markDirtyAcceptor(side);
 				}
+				
 				return true;
 			}
 		}
@@ -315,7 +333,15 @@ public abstract class PartSidedPipe extends TMultiPart implements TSlottedPart, 
 		{
 			if(canConnectMutual(side))
 			{
-				TileEntity tileEntity = Coord4D.get(tile()).getFromSide(side).getTileEntity(world());
+				Coord4D coord = Coord4D.get(tile()).getFromSide(side);
+				
+				if(!world().isRemote && !coord.exists(world()))
+				{
+					forceUpdate = true;
+					continue;
+				}
+				
+				TileEntity tileEntity = coord.getTileEntity(world());
 
 				if(isValidAcceptor(tileEntity, side))
 				{
@@ -324,10 +350,12 @@ public abstract class PartSidedPipe extends TMultiPart implements TSlottedPart, 
 						cachedAcceptors[side.ordinal()] = tileEntity;
 						markDirtyAcceptor(side);
 					}
+					
 					connections |= 1 << side.ordinal();
 					continue;
 				}
 			}
+			
 			if(cachedAcceptors[side.ordinal()] != null)
 			{
 				cachedAcceptors[side.ordinal()] = null;
@@ -596,11 +624,11 @@ public abstract class PartSidedPipe extends TMultiPart implements TSlottedPart, 
 			redstonePowered = false;
 		}
 
-		byte possibleTransmitters = getPossibleTransmitterConnections();
-		byte possibleAcceptors = getPossibleAcceptorConnections();
-
 		if(!world().isRemote)
 		{
+			byte possibleTransmitters = getPossibleTransmitterConnections();
+			byte possibleAcceptors = getPossibleAcceptorConnections();
+			
 			if((possibleTransmitters | possibleAcceptors) != getAllCurrentConnections())
 			{
 				sendDesc = true;
@@ -633,7 +661,6 @@ public abstract class PartSidedPipe extends TMultiPart implements TSlottedPart, 
 			
 			currentTransmitterConnections = setConnectionBit(currentTransmitterConnections, possibleTransmitter, side);
 			currentAcceptorConnections = setConnectionBit(currentAcceptorConnections, possibleAcceptor, side);
-
 		}
 	}
 
@@ -679,6 +706,7 @@ public abstract class PartSidedPipe extends TMultiPart implements TSlottedPart, 
 		{
 			boolean prevPowered = redstonePowered;
 			refreshConnections();
+			
 			if(prevPowered != redstonePowered)
 			{
 				markDirtyTransmitters();
@@ -690,8 +718,10 @@ public abstract class PartSidedPipe extends TMultiPart implements TSlottedPart, 
 	public void onPartChanged(TMultiPart part)
 	{
 		super.onPartChanged(part);
+		
 		byte transmittersBefore = currentTransmitterConnections;
 		refreshConnections();
+		
 		if(transmittersBefore != currentTransmitterConnections)
 		{
 			markDirtyTransmitters();

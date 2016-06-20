@@ -1,19 +1,26 @@
 package mekanism.common;
 
-import cpw.mods.fml.common.FMLCommonHandler;
-import cpw.mods.fml.common.eventhandler.Event;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 import mekanism.api.Coord4D;
 import mekanism.api.transmitters.DynamicNetwork;
 import mekanism.api.transmitters.IGridTransmitter;
 import mekanism.common.util.LangUtils;
+import mekanism.common.util.PipeUtils;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.fluids.IFluidHandler;
-
-import java.util.*;
+import cpw.mods.fml.common.FMLCommonHandler;
+import cpw.mods.fml.common.eventhandler.Event;
 
 public class FluidNetwork extends DynamicNetwork<IFluidHandler, FluidNetwork>
 {
@@ -158,7 +165,7 @@ public class FluidNetwork extends DynamicNetwork<IFluidHandler, FluidNetwork>
 
 					if(acceptor != null && fluidToSend != null)
 					{
-						fluidSent += acceptor.fill(side, new FluidStack(fluidToSend.getFluidID(), currentSending), doTransfer);
+						fluidSent += acceptor.fill(side, PipeUtils.copy(fluidToSend, currentSending), doTransfer);
 					}
 
 					if(fluidSent > prev)

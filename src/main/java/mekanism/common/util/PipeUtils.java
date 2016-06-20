@@ -7,7 +7,6 @@ import java.util.List;
 
 import mekanism.api.Coord4D;
 import mekanism.api.transmitters.ITransmitterTile;
-
 import net.minecraft.tileentity.TileEntity;
 import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.fluids.FluidRegistry;
@@ -58,7 +57,7 @@ public final class PipeUtils
 		{
 			TileEntity acceptor = Coord4D.get(tileEntity).getFromSide(orientation).getTileEntity(tileEntity.getWorldObj());
 
-			if(acceptor instanceof IFluidHandler && !(acceptor instanceof ITransmitterTile))
+			if(acceptor instanceof IFluidHandler)
 			{
 				acceptors[orientation.ordinal()] = (IFluidHandler)acceptor;
 			}
@@ -116,10 +115,18 @@ public final class PipeUtils
 				}
 				
 				ForgeDirection dir = ForgeDirection.getOrientation(Arrays.asList(possibleAcceptors).indexOf(acceptor)).getOpposite();
-				toSend -= acceptor.fill(dir, new FluidStack(stack.getFluid(), currentSending), true);
+				toSend -= acceptor.fill(dir, copy(stack, currentSending), true);
 			}
 		}
 
 		return prevSending-toSend;
+	}
+	
+	public static FluidStack copy(FluidStack fluid, int amount)
+	{
+		FluidStack ret = fluid.copy();
+		ret.amount = amount;
+		
+		return ret;
 	}
 }
